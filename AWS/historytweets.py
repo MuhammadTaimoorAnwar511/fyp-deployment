@@ -146,56 +146,110 @@ def _scroll(driver: uc.Chrome, seconds: int = 10):
 def scrape_tweets_advanced(driver: uc.Chrome, account: str,
                            since_date: str, until_date: str,
                            max_tweets: int = MAX_TWEETS_PER_DAY) -> List[Dict]:
-    query = f"from%3A{account}%20since%3A{since_date}%20until%3A{until_date}"
-    driver.get(f"https://x.com/search?q={query}&f=live")
-
     try:
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-testid='tweet']"))
-        )
-    except TimeoutException:
-        logging.info("%s – 0 tweets (login wall?)", account)
+        query = f"from%3A{account}%20since%3A{since_date}%20until%3A{until_date}"
+        search_url = f"https://x.com/search?q={query}&f=live"
+        logging.info("🔍 Searching URL: %s", search_url)
+        driver.get(search_url)
+
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-testid='tweet']"))
+            )
+            logging.info("✅ Found tweet elements on page")
+        except TimeoutException:
+            logging.warning("⏰ Timeout waiting for tweets - checking page content...")
+            page_text = driver.page_source[:500]  # First 500 chars
+            if "login" in page_text.lower() or "sign in" in page_text.lower():
+                logging.error("❌ Login wall detected!")
+            else:
+                logging.warning("⚠️  No tweets found for %s (%s → %s)", account, since_date, until_date)
+            return []
+
+        _scroll(driver, seconds=10)
+        elems = driver.find_elements(By.CSS_SELECTOR, "article[data-testid='tweet']")
+        logging.info("📊 Found %d tweet elements after scrolling", len(elems))
+        
+        tweets: List[Dict] = []
+        for i, e in enumerate(elems[:max_tweets]):
+            try: 
+                txt = e.find_element(By.CSS_SELECTOR, "div[data-testid='tweetText']").text
+                if not txt.strip():
+                    logging.warning("⚠️  Empty tweet text for element %d", i)
+                    continue
+            except NoSuchElementException: 
+                logging.warning("⚠️  No tweet text found for element %d", i)
+                continue
+                
+            tid = e.get_attribute("data-tweet-id") or f"unknown_{i}"
+            def grab(css):
+                try:  return e.find_element(By.CSS_SELECTOR, css).text or "0"
+                except NoSuchElementException: return "0"
+            likes, rts, cmts = grab("div[data-testid='like']"), grab("div[data-testid='retweet']"), grab("div[data-testid='reply']")
+            
+            try: ts = e.find_element(By.TAG_NAME, "time").get_attribute("datetime")
+            except NoSuchElementException: ts = datetime.now(timezone.utc).isoformat()
+            
+            sent, prob = predict_sentiment(txt)
+            tweet_data = {
+                "user": account, "text": txt, "tweet_id": tid,
+                "likes": likes, "retweets": rts, "comments": cmts,
+                "timestamp": ts, "sentiment": sent, "sentiment_probability": prob,
+            }
+            tweets.append(tweet_data)
+            
+        logging.info("✅ %s – Successfully extracted %d tweets (%s → %s)", account, len(tweets), since_date, until_date)
+        if tweets:
+            logging.info("📝 Sample tweet: %s...", tweets[0]["text"][:100])
+        return tweets
+        
+    except Exception as e:
+        logging.error("❌ Error scraping %s: %s", account, str(e))
+        import traceback
+        logging.error("❌ Traceback: %s", traceback.format_exc())
         return []
 
-    _scroll(driver, seconds=10)
-    elems = driver.find_elements(By.CSS_SELECTOR, "article[data-testid='tweet']")
-    tweets: List[Dict] = []
-    for e in elems[:max_tweets]:
-        try: txt = e.find_element(By.CSS_SELECTOR, "div[data-testid='tweetText']").text
-        except NoSuchElementException: txt = ""
-        tid = e.get_attribute("data-tweet-id") or "N/A"
-        def grab(css):
-            try:  return e.find_element(By.CSS_SELECTOR, css).text or "0"
-            except NoSuchElementException: return "0"
-        likes, rts, cmts = grab("div[data-testid='like']"), grab("div[data-testid='retweet']"), grab("div[data-testid='reply']")
-        try: ts = e.find_element(By.TAG_NAME, "time").get_attribute("datetime")
-        except NoSuchElementException: ts = datetime.now(timezone.utc).isoformat()
-        sent, prob = predict_sentiment(txt)
-        tweets.append({
-            "user": account, "text": txt, "tweet_id": tid,
-            "likes": likes, "retweets": rts, "comments": cmts,
-            "timestamp": ts, "sentiment": sent, "sentiment_probability": prob,
-        })
-    logging.info("%s – %d tweets (%s → %s)", account, len(tweets), since_date, until_date)
-    return tweets
-
-def append_new_tweets(new: List[Dict]):
-    if os.path.exists(HISTORY_TWEETS_FILE):
-        with open(HISTORY_TWEETS_FILE, "r", encoding="utf-8") as fp:
-            old = json.load(fp)
-    else:
-        old = []
-    seen = {(t["user"], t["text"]) for t in old}
-    fresh = [t for t in new if (t["user"], t["text"]) not in seen]
-    if fresh:
-        old.extend(fresh)
-        with open(HISTORY_TWEETS_FILE, "w", encoding="utf-8") as fp:
-            json.dump(old, fp, indent=2)
-        logging.info("Persisted %d new tweets", len(fresh))
+def append_all_tweets(new: List[Dict]):
+    """Save all tweets without checking for duplicates"""
+    logging.info("💾 Attempting to save %d tweets to file: %s", len(new), HISTORY_TWEETS_FILE)
+    
+    try:
+        if os.path.exists(HISTORY_TWEETS_FILE):
+            with open(HISTORY_TWEETS_FILE, "r", encoding="utf-8") as fp:
+                old = json.load(fp)
+            logging.info("📂 Loaded %d existing tweets from file", len(old))
+        else:
+            old = []
+            logging.info("📂 No existing file found, starting fresh")
+        
+        # Add all new tweets without duplicate checking
+        if new:
+            old.extend(new)
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(HISTORY_TWEETS_FILE) if os.path.dirname(HISTORY_TWEETS_FILE) else ".", exist_ok=True)
+            
+            with open(HISTORY_TWEETS_FILE, "w", encoding="utf-8") as fp:
+                json.dump(old, fp, indent=2, ensure_ascii=False)
+                fp.flush()  # Force write to disk
+                
+            # Verify file was written
+            if os.path.exists(HISTORY_TWEETS_FILE):
+                file_size = os.path.getsize(HISTORY_TWEETS_FILE)
+                logging.info("✅ Successfully saved %d new tweets! Total tweets in file: %d (File size: %d bytes)", len(new), len(old), file_size)
+            else:
+                logging.error("❌ File was not created after writing!")
+        else:
+            logging.info("⚠️  No tweets to save")
+            
+    except Exception as e:
+        logging.error("❌ Error saving tweets: %s", str(e))
+        logging.error("❌ Error type: %s", type(e).__name__)
+        import traceback
+        logging.error("❌ Traceback: %s", traceback.format_exc())
 
 # ─────────────────────── ACCOUNT LIST ──────────────────────
 ACCOUNTS = [
-    "elonmusk", "BillGates", "NASA", "CoinDesk", "CoinDeskMarkets",
+    "CoinDeskMarkets",
     "Cointelegraph", "CointelegraphMT", "TheBlock__", "DecryptMedia",
     "CryptoSlate", "BitcoinMagazine", "MessariCrypto", "binance",
     "BinanceUS", "BinanceWallet", "BinanceAcademy", "CoinMarketCap",
@@ -212,13 +266,28 @@ def _scraper_loop():
     while True:
         driver = get_logged_in_driver()
         for acc in ACCOUNTS:
+            logging.info("🔄 Starting to scrape account: %s", acc)
+            account_tweets = []  # Collect all tweets for this account
+            
+            # Scrape all days for this account
             for d in range(MAX_DAYS_BACK):
                 since = (datetime.now(timezone.utc) - timedelta(days=d+1)).strftime("%Y-%m-%d")
                 until = (datetime.now(timezone.utc) - timedelta(days=d  )).strftime("%Y-%m-%d")
+                logging.info("📅 Scraping %s day %d: %s to %s", acc, d+1, since, until)
                 tw = scrape_tweets_advanced(driver, acc, since, until)
-                tweets_db.extend(tw)
-                append_new_tweets(tw)
+                account_tweets.extend(tw)  # Add to account collection
+                tweets_db.extend(tw)       # Add to in-memory database
+                logging.info("📊 Account %s now has %d tweets collected so far", acc, len(account_tweets))
                 time.sleep(random.uniform(*DAY_PAUSE_RANGE))
+            
+            # Save all tweets for this account at once
+            logging.info("💾 About to save tweets for account %s (collected: %d tweets)", acc, len(account_tweets))
+            if account_tweets:
+                append_all_tweets(account_tweets)
+                logging.info("✅ Completed account %s: saved %d tweets total", acc, len(account_tweets))
+            else:
+                logging.info("⚠️  No tweets found for account: %s", acc)
+                
             time.sleep(random.uniform(*ACCOUNT_PAUSE_RANGE))
         save_cookies(driver)        # ← persist any refreshed cookies
         driver.quit()
@@ -241,6 +310,11 @@ def session_status():
 
 # ─────────────────────────── MAIN ───────────────────────────
 if __name__ == "__main__":
-    logging.info("Server ready – scraping last %d days every 10 min (Headless=%s)",
+    # Test file writing capability at startup
+    test_data = [{"test": "startup_test", "timestamp": datetime.now(timezone.utc).isoformat()}]
+    logging.info("🧪 Testing file write capability...")
+    append_all_tweets(test_data)
+    
+    logging.info("Server ready – scraping last %d days every 10 min (Headless=%s)",
                  MAX_DAYS_BACK, HEADLESS_SCRAPE)
     app.run(host="0.0.0.0", port=5000)

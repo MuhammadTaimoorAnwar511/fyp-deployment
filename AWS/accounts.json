@@ -38,4 +38,14 @@
     "CryptoCred",
     "ShillAlerts"
   ]
-  
+   ["CoinDeskMarkets",
+    "Cointelegraph", "CointelegraphMT", "TheBlock__", "DecryptMedia",
+    "CryptoSlate", "BitcoinMagazine", "MessariCrypto", "binance",
+    "BinanceUS", "BinanceWallet", "BinanceAcademy", "CoinMarketCap",
+    "coingecko", "Glassnode", "LunarCRUSH", "CryptoWhale",
+    "TheCryptoLark", "PompPodcast", "SatoshiLite", "cz_binance",
+    "VitalikButerin", "ForbesCrypto", "BloombergCrypto", "CryptoCobain",
+    "CryptoRand", "100trillionUSD", "whale_alert", "AltcoinBuzz",
+    "IvanOnTech", "BitBoyCrypto", "CryptoMichNL", "CryptoCred",
+    "ShillAlerts"
+]
