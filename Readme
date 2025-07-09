@@ -1,19 +1,35 @@
+TO run code on UBuntu:
+
+STEP 1:
+open vs code terminal
 cd AWS
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python bot.py
 ===
+STEP 2:
+open another vs code terminal
 cd AWS
 source venv/bin/activate
 python weighted_sentiment_api.py
 ===
-cd Frontend
-npm i
-npm start
-===
+STEP 3:
+open another vs code terminal
 cd Backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 flask run --reload
+===
+STEP 4:
+open another vs code terminal
+cd Frontend
+npm i
+npm start
+=========
+Generate your own bybit demo api keys
+#BYBIT demo account
+api_key =  EXRPpunGnRiIXo68Xd
+api_secret = MgQDqB2Tk1Ptiz8FlcvklaPkeO4i3nOTXeIk
+========

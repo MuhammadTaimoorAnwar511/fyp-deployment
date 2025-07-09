@@ -17,8 +17,8 @@ CLOSEPNL_ENDPOINT= os.getenv("CLOSE_PNL")
 # ------------------------------------------------------------------------------
 # API Credentials and Setup
 # ------------------------------------------------------------------------------
-API_KEY = "FVxJssLNFyUgq5OTyt"
-API_SECRET = "3PstkL6fJ6vkyTOPCPR0jIGOaoeQQdBv6sDl"
+API_KEY = "bybit api secret"
+API_SECRET = "bybit api secret"
 RECV_WINDOW = "5000"
 
 # ------------------------------------------------------------------------------

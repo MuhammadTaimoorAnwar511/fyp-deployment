@@ -4,8 +4,8 @@ import hmac
 import hashlib
 
 # API credentials
-api_key = "FVxJssLNFyUgq5OTyt"
-api_secret = "3PstkL6fJ6vkyTOPCPR0jIGOaoeQQdBv6sDl"
+api_key = "bybit api"
+api_secret = "bybit api"
 
 # API configuration
 base_url = "https://api-demo.bybit.com"
