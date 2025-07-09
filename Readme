@@ -1,6 +1,6 @@
 TO run code on UBuntu:
 
-STEP 1:
+STEP 1: Start Trading Bot
 open vs code terminal
 cd AWS
 python3 -m venv venv
@@ -8,13 +8,13 @@ source venv/bin/activate
 pip install -r requirements.txt
 python bot.py
 ===
-STEP 2:
+STEP 2: Start Sentiment API
 open another vs code terminal
 cd AWS
 source venv/bin/activate
 python weighted_sentiment_api.py
 ===
-STEP 3:
+STEP 3: Start Backend Server
 open another vs code terminal
 cd Backend
 python3 -m venv venv
@@ -22,14 +22,167 @@ source venv/bin/activate
 pip install -r requirements.txt
 flask run --reload
 ===
-STEP 4:
+STEP 4: Start Frontend
 open another vs code terminal
 cd Frontend
+export CYPRESS_INSTALL_BINARY=0
 npm i
 npm start
-=========
-Generate your own bybit demo api keys
+=======================================================================
+TO run code on Windows:
+
+STEP 1: Start Trading Bot
+open vs code terminal
+cd AWS
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python bot.py
+===
+STEP 2: Start Sentiment API
+open another vs code terminal
+cd AWS
+venv\Scripts\activate
+python weighted_sentiment_api.py
+===
+STEP 3: Start Backend Server
+open another vs code terminal
+cd Backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+flask run --reload
+===
+STEP 4: Start Frontend
+open another vs code terminal
+cd Frontend
+set CYPRESS_INSTALL_BINARY=0 (if you encounter issue while npm i )
+npm i
+npm start
+====
+Generate your own bybit demo api keys that will be use to connect exchange from frontend
 #BYBIT demo account
 api_key =  EXRPpunGnRiIXo68Xd
 api_secret = MgQDqB2Tk1Ptiz8FlcvklaPkeO4i3nOTXeIk
-========
+==================================================================================================================================================
+
+
+
+# Trading Bot Platform - Multi-Component System
+This repository contains a comprehensive trading bot platform with multiple interconnected components designed to run on both Ubuntu and Windows systems.
+
+## System Components
+
+1. **AWS Bot** - Core trading logic and execution
+2. **Weighted Sentiment API** - Sentiment analysis service
+3. **Backend Server** - Flask REST API
+4. **Frontend Application** - React-based user interface
+
+## Prerequisites
+
+### For All Systems
+- Python 3.9+
+- Node.js 16.x+
+- pip 21+
+- npm 8+
+
+### Ubuntu-Specific
+```bash
+sudo apt update
+sudo apt install python3-venv python3-pip nodejs npm
+```
+
+### Windows-Specific
+- Install [Python for Windows](https://www.python.org/downloads/windows/)
+- Install [Node.js for Windows](https://nodejs.org/en/download/)
+- Enable WSL (Windows Subsystem for Linux) for optimal experience
+
+## Setup Instructions
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/yourusername/trading-bot-platform.git
+cd trading-bot-platform
+```
+
+### 2. Configure Environment
+Create `.env` file in `AWS/` directory with your Bybit API credentials:
+```env
+BYBIT_API_KEY=your_api_key_here
+BYBIT_API_SECRET=your_api_secret_here
+```
+
+> **Security Note:** Never commit real API keys to version control! Use demo keys for testing.
+
+## Installation & Execution
+
+### Running on Ubuntu/Linux
+
+| Component          | Command Sequence                                                                 |
+|--------------------|----------------------------------------------------------------------------------|
+| **AWS Bot**        | `cd AWS && python3 -m venv venv && source venv/bin/activate`<br>`pip install -r requirements.txt && python bot.py` |
+| **Sentiment API**  | `cd AWS && source venv/bin/activate`<br>`python weighted_sentiment_api.py`       |
+| **Backend Server** | `cd Backend && python3 -m venv venv && source venv/bin/activate`<br>`pip install -r requirements.txt && flask run --reload` |
+| **Frontend App**   | `cd Frontend && npm install && npm start`                                        |
+
+### Running on Windows
+
+| Component          | Command Sequence                                                                 |
+|--------------------|----------------------------------------------------------------------------------|
+| **AWS Bot**        | `cd AWS && python -m venv venv && venv\Scripts\activate`<br>`pip install -r requirements.txt && python bot.py` |
+| **Sentiment API**  | `cd AWS && venv\Scripts\activate`<br>`python weighted_sentiment_api.py`          |
+| **Backend Server** | `cd Backend && python -m venv venv && venv\Scripts\activate`<br>`pip install -r requirements.txt && flask run --reload` |
+| **Frontend App**   | `cd Frontend && npm install && npm start`                                        |
+
+## Configuration Guide
+
+### Bybit API Setup
+1. Create demo account at [Bybit Testnet](https://testnet.bybit.com/)
+2. Generate API keys in Account Settings
+3. Generate your own bybit demo api keys that will be use to connect exchange from frontend
+```
+
+### Port Configuration
+| Service              | Default Port | Environment Variable |
+|----------------------|--------------|----------------------|
+| Backend API          | 5000         | `FLASK_RUN_PORT`     |
+| Frontend Application | 3000         | `PORT`               |
+| Sentiment API        | 5001         | `SENTIMENT_PORT`     |
+| bot.py               | 8080         | `BOT_PORT`           |
+
+## System Architecture
+
+```mermaid
+graph TD
+    A[Frontend] -->|API Calls| B[Backend Server]
+    B -->|Trading Commands| C[AWS Bot]
+    C -->|Market Data| D[Bybit Exchange]
+    B -->|Sentiment Requests| E[Weighted Sentiment API]
+    E -->|Data Processing| F[External Data Sources]
+```
+
+## Troubleshooting
+
+**Common Issues:**
+- Port conflicts: Stop services using required ports
+- Virtual environment issues: Delete venv directory and recreate
+- Missing dependencies: Run `pip install -r requirements.txt` again
+
+**Windows-Specific Fixes:**
+- Execution Policy: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`
+- Path issues: Use absolute paths in Python scripts
+
+## Security Best Practices
+
+1. Always use environment variables for sensitive data
+2. Regularly rotate API keys
+3. Use virtual environments for Python dependencies
+4. Keep dependencies updated with `pip audit` and `npm audit`
+5. Implement firewall rules to restrict access to services
+
+## License
+MIT License - See [LICENSE](LICENSE) for full text
+
+---
+
+> **Note**: Replace placeholder architecture diagram with actual system diagram. Remember to never commit real API keys to version control. For production deployment, use process management tools like PM2 for Node.js and Gunicorn for Flask.
